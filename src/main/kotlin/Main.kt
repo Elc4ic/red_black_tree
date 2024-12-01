@@ -34,7 +34,9 @@ class RBTree(private var root: Node? = null) {
         }
 
         override fun toString(): String {
-            return "${this.passport.series} ${this.passport.number} ${this.color} ${this.left?.passport?.series} ${this.right?.passport?.series} ${this.parent?.passport?.series}"
+            return "${this.passport.series} " +
+                    "${this.passport.number} ${this.color} ${this.left?.passport?.series} " +
+                    "${this.right?.passport?.series} ${this.parent?.passport?.series}"
         }
     }
 
@@ -227,7 +229,7 @@ class RBTree(private var root: Node? = null) {
 
     fun print() = printTree(root, " ", true)
 
-    fun leftRightPrint() = leftRightOrder(root)
+    fun lrPrint() = leftRightOrder(root)
 
     private fun leftRightOrder(root: Node?) {
         if (root != null) {
@@ -254,6 +256,6 @@ fun main() {
     }
     tree.delete(8, 64)
     tree.print()
-    tree.leftRightPrint()
+    tree.lrPrint()
     println(tree.search(4, 16)?.passport?.series)
 }
