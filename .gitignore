@@ -40,3 +40,13 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+/src/main/kotlin/ReflectionWhat.kt
+/src/main/kotlin/AnnotationWhat.kt
+/src/main/kotlin/ReactiveWhat.kt
+/src/main/kotlin/MvvmWhat.kt
+/src/main/kotlin/MviWhat.kt
+/src/main/kotlin/FactoryWhat.kt
+/src/main/kotlin/GenericTWhat.kt
+/src/main/kotlin/FlowWhat.kt
+/src/main/kotlin/QuickSort.kt
+/src/main/kotlin/MergeSort.kt

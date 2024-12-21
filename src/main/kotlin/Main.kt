@@ -1,45 +1,58 @@
-class RBTree(private var root: Node? = null) {
+import java.io.File
+
+
+class RBTree(private var root: Node = Node()) {
 
     enum class Color {
         RED, BLACK
     }
 
     class Passport(series: Int, number: Int) {
+        init {
+            if (!(1..9999).contains(series) && !(1..999999).contains(number)) throw Exception()
+        }
+
         var series: Int = series % 10000
         var number: Int = number % 1000000
     }
 
     data class Node(
-        var passport: Passport,
+        var passport: Passport? = null,
+        val duplicates: MutableSet<Int> = mutableSetOf(),
         var color: Color = Color.RED,
         var left: Node? = null,
         var right: Node? = null,
         var parent: Node? = null
     ) {
+        constructor(passport: Passport) : this() {
+            this.passport = passport
+            this.left = Node(color = Color.BLACK)
+            this.right = Node(color = Color.BLACK)
+        }
 
         operator fun compareTo(other: Node): Int {
-            return when {
-                this.passport.series < other.passport.series -> -1
-                this.passport.series > other.passport.series -> 1
-                this.passport.number < other.passport.number -> -1
-                this.passport.number > other.passport.number -> 1
+            val result = when {
+                this.passport!!.series < other.passport!!.series -> -1
+                this.passport!!.series > other.passport!!.series -> 1
+                this.passport!!.number < other.passport!!.number -> -1
+                this.passport!!.number > other.passport!!.number -> 1
                 else -> 0
             }
+            return result
         }
 
         override operator fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Node) return false
-            return this.passport.series == other.passport.series && this.passport.number == other.passport.number
+            return this.passport?.series == other.passport?.series && this.passport?.number == other.passport?.number
         }
 
         override fun toString(): String {
-            return "${this.passport.series} " +
-                    "${this.passport.number} ${this.color} ${this.left?.passport?.series} " +
-                    "${this.right?.passport?.series} ${this.parent?.passport?.series}"
+            return "${this.passport?.series} ${this.passport?.number} ${this.color} ${this.duplicates}"
         }
     }
 
+    private fun Node?.isNullLeaf() = this != null && passport == null
     private fun Node.uncleL(): Node? = this.parent?.parent?.left
     private fun Node.uncleR(): Node? = this.parent?.parent?.right
     private fun Node.grand(): Node? = this.parent?.parent
@@ -54,77 +67,86 @@ class RBTree(private var root: Node? = null) {
         return this.parent?.left
     }
 
-    private fun cutNode(before: Node, after: Node?) {
+    private fun cutNode(before: Node, after: Node) {
         when {
-            before.parent == null -> root = after
-            before == before.parent?.left -> before.parent?.left = after
+            before.parent.isNullLeaf() -> root = after
+            before == before.bratL() -> before.parent?.left = after
             else -> before.parent?.right = after
         }
-        after?.parent = before.parent
+        after.parent = before.parent
     }
 
     private fun minimum(node: Node): Node {
-        var current = node
-        while (current.left != null) {
-            current = current.left!!
+        var z = node
+        while (!z.left.isNullLeaf()) {
+            z = z.left!!
         }
-        return current
+        return z
     }
 
     private fun leftRotate(x: Node) {
-        val y = x.right ?: return
-        x.right = y.left
-        y.left.let { it?.parent = x }
-        y.parent = x.parent
+        val y = x.right
+        x.right = y?.left
+        y?.left.let { it?.parent = x }
+        y?.parent = x.parent
         when {
-            x.parent == null -> root = y
+            x.parent.isNullLeaf() -> root = y!!
             x == x.bratL() -> x.bratL(y)
             else -> x.bratR(y)
         }
-        y.left = x
+        y?.left = x
         x.parent = y
     }
 
-    private fun rightRotate(y: Node) {
-        val x = y.left ?: return
-        y.left = x.right
-        x.right.let { it?.parent = y }
-        x.parent = y.parent
+    private fun rightRotate(x: Node) {
+        val y = x.left
+        x.left = y?.right
+        y?.right.let { it?.parent = x }
+        y?.parent = x.parent
         when {
-            x.parent == null -> root = x
-            y == y.bratL() -> y.bratL(x)
-            else -> y.bratR(x)
+            y?.parent.isNullLeaf() -> root = y!!
+            x == x.bratR() -> x.bratR(y)
+            else -> x.bratL(y)
         }
-        x.right = y
-        y.parent = x
+        y?.right = x
+        x.parent = y
     }
 
 
-    fun add(series: Int, number: Int) {
+    fun add(n: Int, series: Int, number: Int) {
         val newNode = Node(Passport(series, number))
-        var x: Node? = root
-        while (x?.left != null || x?.right != null) {
-            x = if (newNode < x) x.left else x.right
+        var y = root
+        var x = root
+        while (!x.isNullLeaf()) {
+            y = x
+            x = if (newNode == x) {
+                x.duplicates.add(n)
+                return
+            } else (if (newNode > x) x.right else x.left)!!
         }
-        newNode.parent = x
-        if (x == null) root = newNode
-        else if (newNode < x) x.left = newNode
-        else x.right = newNode
-        insert(newNode)
+        if (newNode == y) {
+            y.duplicates.add(n)
+            return
+        } else newNode.duplicates.add(n)
+        newNode.parent = y
+        if (y.isNullLeaf()) root = newNode
+        else if (newNode < y) y.left = newNode
+        else y.right = newNode
+        fixAdd(newNode)
     }
 
-    private fun insert(node: Node) {
+    private fun fixAdd(node: Node) {
         var z = node
-        while (z.parent?.color == Color.RED) {
+        while (z.parent?.color == Color.RED && z != root) {
             if (z.parent == z.uncleL()) {
-                val y = z.uncleR()
-                if (y?.color == Color.RED) {
+                val uncle = z.uncleR()
+                if (uncle?.color == Color.RED) {
+                    uncle.color = Color.BLACK
                     z.parent?.color = Color.BLACK
-                    y.color = Color.BLACK
                     z.grand()?.color = Color.RED
-                    z = z.grand() ?: return
+                    z = z.grand()!!
                 } else {
-                    if (z == z.parent?.right) {
+                    if (z == z.bratR()) {
                         z = z.parent!!
                         leftRotate(z)
                     }
@@ -133,14 +155,14 @@ class RBTree(private var root: Node? = null) {
                     rightRotate(z.grand()!!)
                 }
             } else {
-                val y = z.grand()?.left
-                if (y?.color == Color.RED) {
+                val uncle = z.uncleL()
+                if (uncle?.color == Color.RED) {
+                    uncle.color = Color.BLACK
                     z.parent?.color = Color.BLACK
-                    y.color = Color.BLACK
                     z.grand()?.color = Color.RED
-                    z = z.grand() ?: return
+                    z = z.grand()!!
                 } else {
-                    if (z == z.parent?.left) {
+                    if (z == z.bratL()) {
                         z = z.parent!!
                         rightRotate(z)
                     }
@@ -150,112 +172,150 @@ class RBTree(private var root: Node? = null) {
                 }
             }
         }
-        root?.color = Color.BLACK
+        root.color = Color.BLACK
     }
 
-
-    fun delete(series: Int, number: Int) {
-        search(series, number)?.let { exclude(it) }
-    }
-
-    private fun exclude(node: Node) {
-        val temp: Node?
-        if (node.left == null || node.right == null) {
-            temp = node.right ?: node.left
-            cutNode(node, temp)
-        } else {
-            val successor = minimum(node.right!!)
-            node.passport = successor.passport
-            temp = successor.right
-            cutNode(successor, temp)
+    fun delete(series: Int, number: Int, n: Int) {
+        search(series, number)?.let {
+            if (it.duplicates.size > 1) {
+                it.duplicates.remove(n)
+                return
+            }
+            delete(it)
         }
-
-        temp.let { this.fixDelete(it) }
     }
 
-    private fun fixDelete(node: Node?): Node? {
+    private fun delete(z: Node) {
+        var y = z
+        val x: Node?
+        var originalColor = y.color
+        if (z.left.isNullLeaf()) {
+            x = z.right
+            cutNode(z, z.right!!)
+        } else if (z.right.isNullLeaf()) {
+            x = z.left
+            cutNode(z, z.left!!)
+        } else {
+            y = minimum(z.right!!)
+            originalColor = y.color;
+            x = y.right
+            if (y.parent == z) {
+                x?.parent = y
+            } else {
+                cutNode(y, y.right!!)
+                y.right = z.right
+                y.right?.parent = y
+            }
+            cutNode(z, y)
+            y.left = z.left
+            y.left?.parent = y
+            y.color = z.color
+        }
+        if (originalColor == Color.BLACK) {
+            fixDelete(x);
+        }
+    }
+
+    private fun fixDelete(node: Node?) {
         var z = node
         while (z != root && z?.color == Color.BLACK) {
-            println(z.toString())
-            z = if (z == z.bratL()) {
-                fixByBrat(z)(true)
-            } else {
-                fixByBrat(z)(false)
-            }
+            z = fixByBrat(z)(z == z.bratL())
         }
         z?.color = Color.BLACK
-        return z
     }
 
     private fun fixByBrat(z: Node): (Boolean) -> Node? = { isLeft ->
         var brat = if (isLeft) z.bratR() else z.bratL()
-        val action = { z: Node? -> if (isLeft) z?.bratR() else z?.bratL() }
+        val getBrat = { z: Node? -> if (isLeft) z?.bratR() else z?.bratL() }
         val rotate1 = { z: Node -> if (isLeft) leftRotate(z) else rightRotate(z) }
         val rotate2 = { z: Node -> if (isLeft) rightRotate(z) else leftRotate(z) }
-        val son1 = if (isLeft) brat?.right else brat?.left
-        val son2 = if (isLeft) brat?.left else brat?.right
+        val getSon1 = { z: Node? -> if (isLeft) z?.right else z?.left }
+        val getSon2 = { z: Node? -> if (isLeft) z?.left else z?.right }
         if (brat?.color == Color.RED) {
             brat.color = Color.BLACK
             z.parent?.color = Color.RED
             rotate1(z.parent!!)
-            brat = action(z)
+            brat = getBrat(z)
         }
-        if (son1?.color == Color.BLACK && son2?.color == Color.BLACK) {
+        if (getSon1(brat)?.color == Color.BLACK && getSon2(brat)?.color == Color.BLACK) {
             brat?.color = Color.RED
             z.parent
         } else {
-            if (son1?.color == Color.BLACK) {
-                son2?.color = Color.BLACK
+            if (getSon1(brat)?.color == Color.BLACK) {
+                getSon2(brat)?.color = Color.BLACK
                 brat?.color = Color.RED
                 rotate2(brat!!)
-                brat = action(z)
+                brat = getBrat(z)
             }
             brat?.color = z.parent?.color!!
             z.parent?.color = Color.BLACK
-            son1?.color = Color.BLACK
+            getSon1(brat)?.color = Color.BLACK
             rotate1(z.parent!!)
             root
         }
     }
 
     fun search(series: Int, number: Int): Node? {
-        val node = Node(Passport(series, number))
-        var z = root
-        while (z != null && node != z) {
-            z = if (node < z) z.left else z.right
+        val newNode = Node(Passport(series, number))
+        var y: Node? = null
+        var x = root
+        while (!x.isNullLeaf() && y != newNode) {
+            y = x
+            x = if (newNode > x) x.right!!
+            else x.left!!
         }
-        return z
+        return y
     }
 
-    fun print() = printTree(root, " ", true)
+    fun initFromFile(path: String) {
+        File(path).bufferedReader().readLines().forEachIndexed { index, s ->
+            try {
+                val (series, number) = s.split(" ").map { it.toInt() }
+                this.add(index + 1, series, number)
+            } catch (e: Exception) {
+                println("$s is not valid passport")
+            }
 
+        }
+    }
+
+    fun print() = printTree(root, "")
+    fun printWithLeafs() = printTreeWithLeafs(root, "")
     fun lrPrint() = leftRightOrder(root)
 
     private fun leftRightOrder(root: Node?) {
-        if (root != null) {
-            leftRightOrder(root.left)
-            print("${root.passport.series}->")
-            leftRightOrder(root.right)
+        if (!root.isNullLeaf()) {
+            leftRightOrder(root?.left)
+            print("${root?.passport?.series}->")
+            leftRightOrder(root?.right)
         }
     }
 
-    private fun printTree(node: Node?, indent: String, isLeft: Boolean) {
+    private fun printTreeWithLeafs(node: Node?, indent: String) {
         if (node == null) return
+        printTree(node.right, "$indent     ")
+        println("$indent $node")
+        printTree(node.left, "$indent     ")
+    }
 
-        println("$indent${if (isLeft) "L--" else "R--"}$node")
-
-        printTree(node.left, "$indent    ", true)
-        printTree(node.right, "$indent    ", false)
+    private fun printTree(node: Node?, indent: String) {
+        if (node.isNullLeaf()) return
+        printTree(node?.right, "$indent     ")
+        println("$indent $node")
+        printTree(node?.left, "$indent     ")
     }
 }
 
 fun main() {
     val tree = RBTree()
-    for (i in 1..8) {
-        tree.add(i, i * i)
-    }
-    tree.delete(8, 64)
+
+    tree.initFromFile("src/main/kotlin/passport_db.txt")
+
+    tree.delete(6234, 917805, 8)
+    tree.delete(7410, 286593, 9)
+    tree.delete(5678, 901234, 5)
+    tree.delete(6543, 210987, 13)
+    tree.delete(7192, 835467, 6)
+
     tree.print()
-    tree.lrPrint()
-    println(tree.search(4, 16)?.passport?.series)
 }
