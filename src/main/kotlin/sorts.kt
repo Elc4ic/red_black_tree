@@ -71,27 +71,33 @@ fun twoWayInsertionSort(arr: Array<Passport>) {
     val n = arr.size
     if (n < 2) return
 
-    val deque = ArrayDeque<Passport>(n)
-    deque.addFirst(arr[0])
+    val x = Array<Passport?>(2 * n) { null }
+    var left = n
+    var right = n
+    x[n] = arr[0]
 
     for (i in 1..<n) {
-        if (arr[i] < deque.first()) {
-            deque.addFirst(arr[i])
-        } else if (arr[i] > deque.last()) {
-            deque.addLast(arr[i])
+        val t = arr[i]
+        if (t >= arr[0]) {
+            right++
+            var j = right
+            while (t < x[j - 1]!!) {
+                x[j] = x[j - 1]
+                j--
+            }
+            x[j] = t
         } else {
-            val tempList = deque.toList().toMutableList()
-            var j = 0
-            while (j < tempList.size && tempList[j] < arr[i]) {
+            left--
+            var j = left
+            while (t > x[j + 1]!!) {
+                x[j] = x[j + 1]
                 j++
             }
-            tempList.add(j, arr[i])
-            deque.clear()
-            deque.addAll(tempList)
+            x[j] = t
         }
     }
     arr.forEachIndexed { index, _ ->
-        arr[index] = deque.removeFirst()
+        arr[index] = x[left + index]!!
     }
 }
 
@@ -133,9 +139,9 @@ fun countTimeAndCreateFile(func: (Array<Passport>) -> Unit, array: Array<Passpor
 }
 
 fun main() {
-    fillFile("src/main/kotlin/passport_db.txt", 500000)
-    val array1 = initFromFile("src/main/kotlin/passport_db.txt")
-    val array2 = initFromFile("src/main/kotlin/passport_db.txt")
-    countTimeAndCreateFile(::quickSort, array1, "src/main/kotlin/quickSort.txt")
-    countTimeAndCreateFile(::twoWayInsertionSort, array2, "src/main/kotlin/twoInsertSort.txt")
+    fillFile("src/main/kotlin/sort_result/passport_db.txt", 500000)
+    val array1 = initFromFile("src/main/kotlin/sort_result/passport_db.txt")
+    val array2 = initFromFile("src/main/kotlin/sort_result/passport_db.txt")
+    countTimeAndCreateFile(::quickSort, array1, "src/main/kotlin/sort_result/quickSort.txt")
+    countTimeAndCreateFile(::twoWayInsertionSort, array2, "src/main/kotlin/sort_result/twoInsertSort.txt")
 }
