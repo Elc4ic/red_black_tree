@@ -308,14 +308,6 @@ class RBTree(private var root: Node = Node()) {
 
 fun main() {
     val tree = RBTree()
-
-    tree.initFromFile("src/main/kotlin/passport_db.txt")
-
-    tree.delete(6234, 917805, 8)
-    tree.delete(7410, 286593, 9)
-    tree.delete(5678, 901234, 5)
-    tree.delete(6543, 210987, 13)
-    tree.delete(7192, 835467, 6)
-
+    tree.initFromFile("src/main/kotlin/tree_passport_db.txt")
     tree.print()
 }
